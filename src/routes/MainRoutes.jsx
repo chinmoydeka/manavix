@@ -3,6 +3,8 @@ import { lazy } from 'react';
 // project imports
 import Loadable from 'components/Loadable';
 import DashboardLayout from 'layout/Dashboard';
+import SettingsPage from '../pages/settings';
+
 
 // render- Dashboard
 const DashboardDefault = Loadable(lazy(() => import('pages/dashboard/default')));
@@ -11,7 +13,7 @@ const DashboardDefault = Loadable(lazy(() => import('pages/dashboard/default')))
 const Color = Loadable(lazy(() => import('pages/component-overview/color')));
 const Typography = Loadable(lazy(() => import('pages/component-overview/typography')));
 const Shadow = Loadable(lazy(() => import('pages/component-overview/shadows')));
-
+const Projects = Loadable(lazy(()=>import('pages/projects')))
 // render - sample page
 const SamplePage = Loadable(lazy(() => import('pages/extra-pages/sample-page')));
 
@@ -35,8 +37,12 @@ const MainRoutes = {
       ]
     },
     {
-      path: 'typography',
-      element: <Typography />
+      path: 'projects',
+      element: <Projects />
+    },
+    {
+      path: 'settings',
+      element: <SettingsPage />
     },
     {
       path: 'color',

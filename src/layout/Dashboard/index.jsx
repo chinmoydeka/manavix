@@ -5,7 +5,6 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import Toolbar from '@mui/material/Toolbar';
 import Box from '@mui/material/Box';
 
-// project imports
 import Drawer from './Drawer';
 import Header from './Header';
 import Footer from './Footer';
@@ -13,15 +12,14 @@ import Loader from 'components/Loader';
 import Breadcrumbs from 'components/@extended/Breadcrumbs';
 
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
-
-// ==============================|| MAIN LAYOUT ||============================== //
+import RequireAuth from '../../components/RequireAuth';
 
 export default function DashboardLayout() {
   const { pathname } = useLocation();
   const { menuMasterLoading } = useGetMenuMaster();
   const downXL = useMediaQuery((theme) => theme.breakpoints.down('xl'));
 
-  // set media wise responsive drawer
+  // Handle drawer open based on screen size
   useEffect(() => {
     handlerDrawerOpen(!downXL);
   }, [downXL]);
@@ -29,26 +27,40 @@ export default function DashboardLayout() {
   if (menuMasterLoading) return <Loader />;
 
   return (
-    <Box sx={{ display: 'flex', width: '100%' }}>
-      <Header />
-      <Drawer />
+    <RequireAuth>
+      <Box sx={{ display: 'flex', width: '100%' }}>
+        <Header />
+        <Drawer />
 
-      <Box component="main" sx={{ width: 'calc(100% - 260px)', flexGrow: 1, p: { xs: 2, sm: 3 } }}>
-        <Toolbar sx={{ mt: 'inherit' }} />
         <Box
+          component="main"
           sx={{
-            ...{ px: { xs: 0, sm: 2 } },
-            position: 'relative',
-            minHeight: 'calc(100vh - 110px)',
-            display: 'flex',
-            flexDirection: 'column'
+            width: { xs: '100%', xl: 'calc(100% - 260px)' },
+            flexGrow: 1,
+            p: { xs: 1, sm: 1, md: 2 }, // reduced padding for mobile
+            mt: { xs: '56px', sm: '0px' } // add top margin on mobile to prevent header overlap
           }}
         >
-          {pathname !== '/apps/profiles/account/my-account' && <Breadcrumbs />}
-          <Outlet />
-          <Footer />
+          {/* Toolbar spacer for larger screens */}
+          <Toolbar sx={{ display: { xs: 'none', sm: 'block' } }} />
+
+          <Box
+            sx={{
+              flex: 1,
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 'calc(100vh - 100px)', // adjusted for Footer
+              px: { xs: 0, sm: 1 },
+              pb: { xs: 6, sm: 4 }
+            }}
+          >
+            <Outlet />
+            <Footer />
+          </Box>
         </Box>
+
       </Box>
-    </Box>
+    </RequireAuth>
   );
 }

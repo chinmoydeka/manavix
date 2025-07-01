@@ -27,10 +27,16 @@ import AnimateButton from 'components/@extended/AnimateButton';
 import EyeOutlined from '@ant-design/icons/EyeOutlined';
 import EyeInvisibleOutlined from '@ant-design/icons/EyeInvisibleOutlined';
 
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
 // ============================|| JWT - LOGIN ||============================ //
 
 export default function AuthLogin({ isDemo = false }) {
   const [checked, setChecked] = React.useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
 
   const [showPassword, setShowPassword] = React.useState(false);
   const handleClickShowPassword = () => {
@@ -41,24 +47,45 @@ export default function AuthLogin({ isDemo = false }) {
     event.preventDefault();
   };
 
+  const [formError, setFormError] = React.useState('');
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+
+
+
   return (
     <>
       <Formik
-        initialValues={{
-          email: 'info@codedthemes.com',
-          password: '123456',
-          submit: null
+        initialValues={{ email: '', password: '' }}
+        validationSchema={Yup.object().shape({ /* ... */ })}
+        onSubmit={async (values, { setSubmitting }) => {
+          setFormError('');
+          try {
+            const response = await axios.post(API_BASE_URL+'/auth/', {
+              email: values.email,
+              password: values.password
+            });
+
+            if (response.data.auth) {
+             
+              login(response.data.token)
+              navigate('/dashboard/default');
+            }
+          } catch (error) {
+            console.log(error)
+            if (error.response?.status === 401) {
+              setFormError(error.response.data.error || 'Invalid credentials');
+            } else {
+              setFormError('Something went wrong. Please try again.');
+            }
+          } finally {
+            setSubmitting(false);
+          }
         }}
-        validationSchema={Yup.object().shape({
-          email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
-          password: Yup.string()
-            .required('Password is required')
-            .test('no-leading-trailing-whitespace', 'Password cannot start or end with spaces', (value) => value === value.trim())
-            .max(10, 'Password must be less than 10 characters')
-        })}
       >
-        {({ errors, handleBlur, handleChange, touched, values }) => (
-          <form noValidate>
+
+        {({ errors, handleBlur, handleChange, touched, values,isSubmitting,handleSubmit   }) => (
+          <form noValidate onSubmit={handleSubmit}>
             <Grid container spacing={3}>
               <Grid size={12}>
                 <Stack sx={{ gap: 1 }}>
@@ -136,14 +163,19 @@ export default function AuthLogin({ isDemo = false }) {
               </Grid>
               <Grid size={12}>
                 <AnimateButton>
-                  <Button fullWidth size="large" variant="contained" color="primary">
+                  <Button fullWidth size="large" type='submit' variant="contained" color="primary">
                     Login
                   </Button>
                 </AnimateButton>
               </Grid>
             </Grid>
+             {formError && (
+          <FormHelperText error>{formError}</FormHelperText>
+        )}
           </form>
         )}
+       
+
       </Formik>
     </>
   );

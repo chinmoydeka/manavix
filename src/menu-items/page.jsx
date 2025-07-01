@@ -1,35 +1,51 @@
 // assets
-import { LoginOutlined, ProfileOutlined } from '@ant-design/icons';
+import { LoginOutlined, ProfileOutlined,FormOutlined,ShrinkOutlined,ClockCircleOutlined, CameraOutlined } from '@ant-design/icons';
 
 // icons
 const icons = {
   LoginOutlined,
-  ProfileOutlined
+  ProfileOutlined,FormOutlined,ShrinkOutlined,ClockCircleOutlined,CameraOutlined
 };
 
 // ==============================|| MENU ITEMS - EXTRA PAGES ||============================== //
 
 const pages = {
   id: 'authentication',
-  title: 'Authentication',
+  title: 'Mains',
   type: 'group',
   children: [
     {
-      id: 'login1',
-      title: 'Login',
+      id: '',
+      title: 'Projects',
       type: 'item',
-      url: '/login',
-      icon: icons.LoginOutlined,
+      url: '/projects',
+      icon: icons.FormOutlined,
+      target: false
+    },
+    {
+      id: '',
+      title: 'Requisition ',
+      type: 'item',
+      url: '/color',
+      icon: icons.ShrinkOutlined,
       target: true
     },
     {
       id: 'register1',
-      title: 'Register',
+      title: 'To Do',
+      type: 'item',
+      url: '/shadow',
+      icon: icons.ClockCircleOutlined,
+      target: true
+    },
+    {
+      id: 'register1',
+      title: 'Attandance',
       type: 'item',
       url: '/register',
-      icon: icons.ProfileOutlined,
+      icon: icons.CameraOutlined,
       target: true
-    }
+    },
   ]
 };
 

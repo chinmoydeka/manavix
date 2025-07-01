@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack';
 export default function AuthFooter() {
   return (
     <Container maxWidth="xl">
-      <Stack
+      {/* <Stack
         direction={{ xs: 'column', sm: 'row' }}
         sx={{ gap: 2, justifyContent: { xs: 'center', sm: 'space-between', textAlign: { xs: 'center', sm: 'inherit' } } }}
       >
@@ -42,7 +42,7 @@ export default function AuthFooter() {
             Privacy Policy
           </Typography>
         </Stack>
-      </Stack>
+      </Stack> */}
     </Container>
   );
 }
