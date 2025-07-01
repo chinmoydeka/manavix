@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import {
   Box,
   Typography,
@@ -7,7 +8,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   Table,
   TableHead,
   TableRow,
@@ -19,326 +19,325 @@ import {
   useTheme,
   Avatar,
   CircularProgress,
-  Chip,
-  Divider
+  Snackbar,
+  Alert,
+  Fade,
+  Container
 } from '@mui/material';
-import { Add, Edit, Delete, CloudUpload, Close } from '@mui/icons-material';
+import { Add, Edit, Delete, Close } from '@mui/icons-material';
+import CompanyFormDialog from './addCompany'; // Ensure the path is correct
+
+// Assuming your API base URL is consistently defined
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const CompanyProfile = () => {
   const theme = useTheme();
-  const fileInputRef = useRef(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [companies, setCompanies] = useState([
-    {
-      id: 1,
-      name: 'Naming Pro Inc.',
-      address: '123 Brand Street, San Francisco, CA 94110',
-      taxId: 'US123456789',
-      phone: '+1 (415) 555-0123',
-      email: 'contact@namingpro.com',
-      logo: 'https://via.placeholder.com/150'
-    },
-    {
-      id: 2,
-      name: 'BrandWorks LLC',
-      address: '456 Creative Ave, New York, NY 10001',
-      taxId: 'US987654321',
-      phone: '+1 (212) 555-0456',
-      email: 'info@brandworks.com',
-      logo: 'https://via.placeholder.com/150'
+
+  const [openFormDialog, setOpenFormDialog] = useState(false);
+  const [companies, setCompanies] = useState([]);
+  const [editingCompany, setEditingCompany] = useState(null); // This holds the data for the company being edited
+
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [companyToDeleteId, setCompanyToDeleteId] = useState(null);
+
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+
+  // Unified state for loading/submitting indicators, similar to CompanyFormDialog
+  const [isLoading, setIsLoading] = useState(true); // For initial data fetch
+  const [isActionLoading, setIsActionLoading] = useState(false); // For add/edit/delete actions
+
+  const handleSnackbarOpen = useCallback((message, severity) => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  }, []);
+
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
     }
-  ]);
-  const [newCompany, setNewCompany] = useState({
-    name: '',
-    address: '',
-    taxId: '',
-    phone: '',
-    email: '',
-    logo: null,
-    logoPreview: ''
-  });
-
-  const handleOpenDialog = () => {
-    setOpenDialog(true);
+    setSnackbarOpen(false);
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setNewCompany({
-      name: '',
-      address: '',
-      taxId: '',
-      phone: '',
-      email: '',
-      logo: null,
-      logoPreview: ''
-    });
-  };
+  // --- Fetch Companies ---
+  // This function now makes an actual API call
+  const fetchCompanies = useCallback(async () => {
+    setIsLoading(true); // Set loading true when fetching starts
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        handleSnackbarOpen('Authentication token not found. Please log in.', 'error');
+        setIsLoading(false);
+        return;
+      }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewCompany(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewCompany(prev => ({
-          ...prev,
-          logo: file,
-          logoPreview: reader.result
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeLogo = () => {
-    setNewCompany(prev => ({
-      ...prev,
-      logo: null,
-      logoPreview: ''
-    }));
-  };
-
-  const handleAddCompany = async () => {
-    if (newCompany.name && newCompany.address) {
-      setIsSubmitting(true);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setCompanies(prev => [
-        ...prev,
-        {
-          ...newCompany,
-          id: Math.max(...prev.map(c => c.id), 0) + 1,
-          logo: newCompany.logoPreview || 'https://via.placeholder.com/150'
+      const response = await axios.get(`${API_BASE_URL}app/?action=companyDetails`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // 'Content-Type': 'multipart/form-data', // This header is generally not needed for GET requests
         }
-      ]);
-      
-      setIsSubmitting(false);
-      handleCloseDialog();
+      });
+      // Corrected: Set companies directly from response.data, as it's an array.
+      setCompanies(response.data);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      let errorMessage = 'Failed to fetch companies.';
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          errorMessage = 'Authentication failed. Please log in again.';
+        } else {
+          errorMessage = `Server Error (${error.response?.status || 'N/A'}): ${error.response?.data?.message || error.message}`;
+        }
+      } else {
+        errorMessage = `Request Error: ${error.message}`;
+      }
+      handleSnackbarOpen(`Error: ${errorMessage}`, 'error');
+      setCompanies([]); // Ensure companies is an empty array on error to prevent further errors
+    } finally {
+      setIsLoading(false); // Set loading false when fetching finishes
+    }
+  }, [handleSnackbarOpen]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, [fetchCompanies]);
+
+  const handleOpenFormDialog = (company = null) => {
+    setEditingCompany(company);
+    setOpenFormDialog(true);
+  };
+
+  const handleCloseFormDialog = () => {
+    setOpenFormDialog(false);
+    setEditingCompany(null);
+  };
+
+
+  const handleCompanyFormSubmit = (submittedCompany, actionType) => {
+    fetchCompanies(); // Re-fetch all companies to ensure the list is up-to-date
+  };
+
+  const handleDeleteCompany = async () => {
+    setIsActionLoading(true); // Set loading for the delete action
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        handleSnackbarOpen('Authentication token not found. Please log in.', 'error');
+        setIsActionLoading(false);
+        return;
+      }
+      // Assuming your delete endpoint is structured like this:
+      // For deletion, your backend might expect the ID in the URL, or as a parameter
+      // Double-check your API documentation for the correct delete endpoint and method.
+      // Example for a DELETE request with ID in URL:
+      await axios.delete(`${API_BASE_URL}app/?action=deleteCompany&id=${companyToDeleteId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      handleSnackbarOpen('Company deleted successfully!', 'success');
+      fetchCompanies(); // Re-fetch companies to update the list
+      handleCloseConfirmDialog();
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      let errorMessage = 'Failed to delete company.';
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          errorMessage = 'Authentication failed. Please log in again.';
+        } else {
+          errorMessage = `Server Error (${error.response?.status || 'N/A'}): ${error.response?.data?.message || error.message}`;
+        }
+      } else {
+        errorMessage = `Request Error: ${error.message}`;
+      }
+      handleSnackbarOpen(`Error: ${errorMessage}`, 'error');
+    } finally {
+      setIsActionLoading(false); // Set loading false after action completes
     }
   };
 
-  const handleDeleteCompany = (id) => {
-    setCompanies(prev => prev.filter(company => company.id !== id));
+  const handleOpenConfirmDialog = (id) => {
+    setCompanyToDeleteId(id);
+    setOpenConfirmDialog(true);
+  };
+
+  const handleCloseConfirmDialog = () => {
+    setOpenConfirmDialog(false);
+    setCompanyToDeleteId(null);
   };
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5">Company Profile</Typography>
+    <Container>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: { xs: 2, md: 3 }
+        }}
+      >
+        <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
+          Company Profile
+        </Typography>
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={handleOpenDialog}
+          onClick={() => handleOpenFormDialog()}
+          sx={{
+            borderRadius: theme.shape.borderRadius,
+            px: { xs: 2, md: 3 },
+            py: { xs: 1, md: 1.2 }
+          }}
         >
           Add Company
         </Button>
       </Box>
 
-      <Paper elevation={2} sx={{ p: 2 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Logo</TableCell>
-              <TableCell>Company Name</TableCell>
-              <TableCell>Address</TableCell>
-              <TableCell>Tax ID</TableCell>
-              <TableCell>Contact</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {companies.map((company) => (
-              <TableRow key={company.id}>
-                <TableCell>
-                  <Avatar src={company.logo} alt={company.name} sx={{ width: 40, height: 40 }} />
-                </TableCell>
-                <TableCell>{company.name}</TableCell>
-                <TableCell>{company.address}</TableCell>
-                <TableCell>{company.taxId}</TableCell>
-                <TableCell>
-                  <Box>
-                    <Typography variant="body2">{company.phone}</Typography>
-                    <Typography variant="body2">{company.email}</Typography>
-                  </Box>
-                </TableCell>
-                <TableCell align="right">
-                  <Tooltip title="Edit">
-                    <IconButton size="small" sx={{ color: theme.palette.primary.main }}>
-                      <Edit fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      sx={{ color: theme.palette.error.main }}
-                      onClick={() => handleDeleteCompany(company.id)}
-                    >
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
+      <Paper elevation={1} sx={{ p: { xs: 1, md: 2 }, borderRadius: theme.shape.borderRadius, overflowX: 'auto' }}>
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+            <CircularProgress />
+            <Typography variant="h6" sx={{ ml: 2 }}>Loading Companies...</Typography>
+          </Box>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold' }}>Logo</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Company Name</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Tax ID (GST)</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
+                <TableCell align="right" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {companies.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body1" color="textSecondary">
+                      No companies found. Click "Add Company" to get started!
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                companies.map((company) => (
+                  <TableRow key={company.id} hover>
+                    <TableCell>
+                      <Avatar
+                        src={company.logo || ''} 
+                        alt={company.com_name} 
+                        sx={{ width: 48, height: 48, border: `1px solid ${theme.palette.divider}` }}
+                      />
+                    </TableCell>
+                    <TableCell>{company.com_name}</TableCell> 
+                    <TableCell>{company.address}</TableCell>
+                    <TableCell>{company.gst}</TableCell> 
+                    <TableCell>
+                      <Box>
+                        <Typography variant="body2" color="textPrimary">{company.phone}</Typography>
+                        <Typography variant="body2" color="textSecondary">{company.email}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Edit">
+                        <IconButton
+                          size="small"
+                          sx={{ color: theme.palette.primary.main }}
+                          onClick={() => handleOpenFormDialog(company)}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton
+                          size="small"
+                          sx={{ color: theme.palette.error.main }}
+                          onClick={() => handleOpenConfirmDialog(company.id)}
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
       </Paper>
 
-      {/* Add Company Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
+      <CompanyFormDialog
+        open={openFormDialog}
+        onClose={handleCloseFormDialog}
+        onSubmit={handleCompanyFormSubmit} 
+        initialCompanyData={editingCompany}
+        onSnackbarOpen={handleSnackbarOpen} 
+      />
+
+      <Dialog
+        open={openConfirmDialog}
+        onClose={handleCloseConfirmDialog}
+        maxWidth="xs"
+        fullWidth
+        TransitionComponent={Fade}
+        TransitionProps={{ timeout: 300 }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6">Add New Company</Typography>
-            <IconButton onClick={handleCloseDialog}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              Confirm Deletion
+            </Typography>
+            <IconButton onClick={handleCloseConfirmDialog} size="small">
               <Close />
             </IconButton>
           </Box>
         </DialogTitle>
-        
         <DialogContent dividers>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
-            {/* Logo Upload Section */}
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>
-                Company Logo
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                {newCompany.logoPreview ? (
-                  <Box sx={{ position: 'relative' }}>
-                    <Avatar
-                      src={newCompany.logoPreview}
-                      alt="Company Logo"
-                      sx={{ width: 80, height: 80 }}
-                    />
-                    <IconButton
-                      size="small"
-                      sx={{
-                        position: 'absolute',
-                        top: -8,
-                        right: -8,
-                        backgroundColor: theme.palette.error.main,
-                        color: 'white',
-                        '&:hover': {
-                          backgroundColor: theme.palette.error.dark
-                        }
-                      }}
-                      onClick={removeLogo}
-                    >
-                      <Close fontSize="small" />
-                    </IconButton>
-                  </Box>
-                ) : (
-                  <Avatar sx={{ width: 80, height: 80, bgcolor: theme.palette.grey[200] }}>
-                    <CloudUpload fontSize="large" color="action" />
-                  </Avatar>
-                )}
-                <Box>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                  />
-                  <Button
-                    variant="outlined"
-                    startIcon={<CloudUpload />}
-                    onClick={() => fileInputRef.current.click()}
-                  >
-                    Upload Logo
-                  </Button>
-                  <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
-                    Recommended size: 200x200px (PNG, JPG)
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-
-            <Divider />
-
-            {/* Company Details */}
-            <TextField
-              required
-              fullWidth
-              label="Company Name"
-              name="name"
-              value={newCompany.name}
-              onChange={handleInputChange}
-              variant="outlined"
-              size="small"
-            />
-            <TextField
-              required
-              fullWidth
-              multiline
-              rows={3}
-              label="Billing Address"
-              name="address"
-              value={newCompany.address}
-              onChange={handleInputChange}
-              helperText="This will appear on invoices and receipts"
-              variant="outlined"
-              size="small"
-            />
-            <TextField
-              fullWidth
-              label="Tax ID/VAT Number"
-              name="taxId"
-              value={newCompany.taxId}
-              onChange={handleInputChange}
-              variant="outlined"
-              size="small"
-            />
-            <TextField
-              fullWidth
-              label="Phone Number"
-              name="phone"
-              value={newCompany.phone}
-              onChange={handleInputChange}
-              variant="outlined"
-              size="small"
-            />
-            <TextField
-              fullWidth
-              label="Email"
-              name="email"
-              type="email"
-              value={newCompany.email}
-              onChange={handleInputChange}
-              variant="outlined"
-              size="small"
-            />
-          </Box>
+          <Typography>
+            Are you sure you want to delete this company? This action cannot be undone.
+          </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button
-            onClick={handleCloseDialog}
+            onClick={handleCloseConfirmDialog}
             color="inherit"
-            disabled={isSubmitting}
+            disabled={isActionLoading}
+            sx={{ borderRadius: theme.shape.borderRadius }}
           >
             Cancel
           </Button>
           <Button
             variant="contained"
-            onClick={handleAddCompany}
-            disabled={!newCompany.name || !newCompany.address || isSubmitting}
-            startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : null}
+            color="error"
+            onClick={handleDeleteCompany}
+            disabled={isActionLoading}
+            startIcon={isActionLoading ? <CircularProgress size={20} color="inherit" /> : null}
+            sx={{ borderRadius: theme.shape.borderRadius }}
           >
-            {isSubmitting ? 'Adding...' : 'Add Company'}
+            {isActionLoading ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000} // Increased duration for better visibility of messages
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbarSeverity}
+          variant="filled"
+          sx={{ width: '100%', borderRadius: theme.shape.borderRadius }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Container>
   );
 };
 

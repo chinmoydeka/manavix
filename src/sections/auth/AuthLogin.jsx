@@ -61,7 +61,7 @@ export default function AuthLogin({ isDemo = false }) {
         onSubmit={async (values, { setSubmitting }) => {
           setFormError('');
           try {
-            const response = await axios.post(API_BASE_URL+'/auth/', {
+            const response = await axios.post(API_BASE_URL+'auth/', {
               email: values.email,
               password: values.password
             });

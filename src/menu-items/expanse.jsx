@@ -17,7 +17,7 @@ const expanse = {
   children: [
     {
       id: '',
-      title: 'Expanses',
+      title: 'Expenses',
       type: 'item',
       url: '/login',
       icon: icons.WalletOutlined,

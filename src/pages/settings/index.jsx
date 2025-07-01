@@ -78,12 +78,12 @@ const SettingsPage = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 1 }}>
       <Typography variant="h4" gutterBottom>
         Settings
       </Typography>
       
-      <Grid container spacing={3}>
+      <Grid container spacing={1}>
         {/* Left Sidebar - Menu */}
         <Grid item xs={12} md={3}>
           <Box
@@ -91,7 +91,8 @@ const SettingsPage = () => {
               p: 2,
               borderRadius: theme.shape.borderRadius,
               backgroundColor: theme.palette.background.paper,
-              boxShadow: theme.shadows[1]
+              boxShadow: theme.shadows[1],
+               minHeight: '86vh'
             }}
           >
             {Object.entries(menuItems).map(([key, section]) => (
@@ -150,11 +151,11 @@ const SettingsPage = () => {
         <Grid item xs={12} md={9}>
           <Box
             sx={{
-              p: 3,
+              p: 0,
               borderRadius: theme.shape.borderRadius,
               backgroundColor: theme.palette.background.paper,
               boxShadow: theme.shadows[1],
-              minHeight: '60vh'
+              minHeight: '86vh'
             }}
           >
             {renderContent()}
